@@ -11,8 +11,8 @@ class FileTokenStorage(TokenStorage):
         if not os.path.exists(file_path):
             with open(file_path, 'w') as f:
                 json.dump({}, f)
-        else :
-            self._read_tokens()
+
+        self._read_tokens()
     
     def _read_tokens(self) -> Dict:
         with open(self.file_path, 'r') as f:
