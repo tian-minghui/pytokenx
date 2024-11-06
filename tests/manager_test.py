@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timedelta
-from pytoken.base import TokenManager, TokenData, TokenStorage
+from ..core import TokenManager, TokenData, TokenStorage
 
 class MockTokenStorage(TokenStorage):
     def __init__(self):
@@ -86,3 +86,5 @@ class TestTokenManager:
         token = self.manager.generate_token()
         self.manager.delete_token(token)
         assert self.storage.get_token(token) is None
+
+

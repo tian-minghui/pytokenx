@@ -1,27 +1,9 @@
 from datetime import datetime, timedelta
-import inspect
 import secrets
 import string
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, Dict, Any, List
 from functools import wraps
-
-class TokenValidationError(Exception):
-    """Base exception for token validation errors"""
-
-    pass
-
-
-class TokenNotFoundError(TokenValidationError):
-    """Token not found in request"""
-
-    pass
-
-
-class InvalidTokenError(TokenValidationError):
-    """Token is invalid or expired"""
-
-    pass
 
 
 class TokenData:
@@ -43,9 +25,9 @@ class TokenData:
         self.user_id = user_id
         self.extra_data = extra_data
         self.created_at = created_at
-        self.expires_at = expires_at
-        self.deleted_at = deleted_at
-        self.is_active = is_active
+        self.expires_at = expires_at  # 过期时间
+        self.deleted_at = deleted_at  # 删除时间
+        self.is_active = is_active  # 是否有效
 
     def to_dict(self) -> Dict:
         return {
@@ -95,11 +77,10 @@ class TokenStorage(ABC):
         pass
 
     @abstractmethod
-    def cleanup_expired_tokens(self) -> None:
+    def expire_token(self, token: str) -> None:
         pass
 
-    @abstractmethod
-    def expire_token(self, token: str) -> None:
+    def close(self) -> None:
         pass
 
 
@@ -172,73 +153,6 @@ class TokenManager:
 
     def delete_token(self, token: str) -> None:
         self.storage.delete_token(token)
-
-
-class WebAuthDecoratorAdapter(ABC):
-    """Base adapter for web frameworks"""
-
-    @abstractmethod
-    def get_token_from_request(self, *args, **kwargs) -> str:
-        """Extract token from the current request"""
-        pass
-
-    @abstractmethod
-    def handle_error(self, error: Exception) -> Any:
-        """Handle token validation errors"""
-        pass
-
-    def __init__(
-        self, token_manager: Any, token_type: str = "default", inject_token: bool = True
-    ):
-        self.token_manager = token_manager
-        self.token_type = token_type
-        self.inject_token = inject_token
-
-    def __call__(self, func: Callable) -> Callable:
-        is_coroutine = inspect.iscoroutinefunction(func)
-
-        if is_coroutine:
-
-            @wraps(func)
-            async def async_wrapper(*args, **kwargs):
-                try:
-                    token = await self.adapter.get_token_from_request(*args, **kwargs)
-                    token_data = self.token_manager.validate_token(
-                        token, self.token_type
-                    )
-
-                    if not token_data:
-                        raise InvalidTokenError()
-
-                    if self.inject_token:
-                        kwargs["token_data"] = token_data
-
-                    return await func(*args, **kwargs)
-                except Exception as e:
-                    return self.adapter.handle_error(e)
-
-            return async_wrapper
-        else:
-
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                try:
-                    token = self.adapter.get_token_from_request(*args, **kwargs)
-                    token_data = self.token_manager.validate_token(
-                        token, self.token_type
-                    )
-
-                    if not token_data:
-                        raise InvalidTokenError()
-
-                    if self.inject_token:
-                        kwargs["token_data"] = token_data
-
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    return self.adapter.handle_error(e)
-
-            return wrapper
 
 
 def token_validator(token_manager: TokenManager, token_type: str = "default"):

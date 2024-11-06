@@ -36,17 +36,10 @@ class FileTokenStorage(TokenStorage):
             self.tokens[token].deleted_at = datetime.utcnow()
             self.tokens[token].is_active = False
             self._write_tokens(self.tokens)
-    
-    def cleanup_expired_tokens(self) -> None:
-        current_time = datetime.utcnow()
-        active_tokens = {
-            k: v for k, v in self.tokens.items()
-            if not (v.expires_at and v.expires_at <= current_time)
-        }
-        self._write_tokens(active_tokens)
+
 
     def expire_token(self, token: str) -> None:
         if token in self.tokens:
-            self.tokens[token].deleted_at = datetime.utcnow()
+            self.tokens[token].expires_at = datetime.utcnow()
             self.tokens[token].is_active = False
             self._write_tokens(self.tokens)
