@@ -1,8 +1,7 @@
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.pytokenx import TokenManager, FileTokenStorage, token_validator
+from pytokenx import TokenManager, FileTokenStorage, token_validator
 
 # 使用文件存储
 token_manager = TokenManager(FileTokenStorage("tokens.json"))
