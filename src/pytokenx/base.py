@@ -4,7 +4,7 @@ import string
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, Dict, Any, List
 from functools import wraps
-
+import threading
 
 class TokenData:
     """Token data structure"""
@@ -85,6 +85,7 @@ class TokenStorage(ABC):
 
 
 class TokenManager:
+    _thread_local = threading.local()
     def __init__(
         self,
         storage: TokenStorage,
@@ -99,13 +100,19 @@ class TokenManager:
         # Generate random token
         alphabet = string.ascii_letters + string.digits
         return "".join(secrets.choice(alphabet) for _ in range(token_length))
-
+    
+    def get_token_data(self) -> Optional[TokenData]:
+        return getattr(self._thread_local, "token_data", None)
+    
+    def set_token_data(self, token_data: TokenData) -> None:
+        setattr(self._thread_local, "token_data", token_data)
+    
     def generate_token(
         self,
         user_id: str = None,
-        token_type: str = "default",
-        extra_data: Optional[Dict] = None,
-        expiry: Optional[timedelta] = None,
+        token_type: str = "default", # token类型
+        extra_data: Optional[Dict] = None, # 额外数据
+        expiry: Optional[timedelta] = None, # 过期时间
     ) -> str:
         while True:
             token = self._generate_token0(self.token_length)
@@ -159,15 +166,14 @@ def token_validator(token_manager: TokenManager, token_type: str = "default"):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            token = kwargs.pop("token", None)
+            token = kwargs.get("token", None)
             if not token:
                 raise ValueError("No token provided")
 
             token_data = token_manager.validate_token(token, token_type)
+            token_manager.set_token_data(token_data) # 设置token数据
             if not token_data:
                 raise ValueError("Invalid or expired token")
-
-            kwargs["token_data"] = token_data
             return f(*args, **kwargs)
 
         return decorated_function

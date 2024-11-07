@@ -1,6 +1,10 @@
 import pytest
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from datetime import datetime, timedelta
-from ..core import TokenManager, TokenData, TokenStorage
+from src.pytokenx import TokenManager, TokenData, TokenStorage
 
 class MockTokenStorage(TokenStorage):
     def __init__(self):
