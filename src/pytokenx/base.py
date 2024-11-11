@@ -6,6 +6,7 @@ from typing import Callable, Optional, Dict, Any, List
 from functools import wraps
 import threading
 
+
 class TokenData:
     """Token data structure"""
 
@@ -86,6 +87,7 @@ class TokenStorage(ABC):
 
 class TokenManager:
     _thread_local = threading.local()
+
     def __init__(
         self,
         storage: TokenStorage,
@@ -100,19 +102,23 @@ class TokenManager:
         # Generate random token
         alphabet = string.ascii_letters + string.digits
         return "".join(secrets.choice(alphabet) for _ in range(token_length))
-    
-    def get_token_data(self) -> Optional[TokenData]:
+
+    def get_current_token_data(self) -> Optional[TokenData]:
         return getattr(self._thread_local, "token_data", None)
-    
-    def set_token_data(self, token_data: TokenData) -> None:
+
+    def get_current_token(self) -> Optional[str]:
+        return getattr(self._thread_local, "token", None)
+
+    def set_current_token_data(self, token_data: TokenData) -> None:
         setattr(self._thread_local, "token_data", token_data)
-    
+        setattr(self._thread_local, "token", token_data.token)
+
     def generate_token(
         self,
         user_id: str = None,
-        token_type: str = "default", # token类型
-        extra_data: Optional[Dict] = None, # 额外数据
-        expiry: Optional[timedelta] = None, # 过期时间
+        token_type: str = "default",  # token类型
+        extra_data: Optional[Dict] = None,  # 额外数据
+        expiry: Optional[timedelta] = None,  # 过期时间
     ) -> str:
         while True:
             token = self._generate_token0(self.token_length)
@@ -155,23 +161,30 @@ class TokenManager:
         if token_data.expires_at and datetime.utcnow() >= token_data.expires_at:
             self.storage.expire_token(token)
             return None
-
+        self.set_current_token_data(token_data)
         return token_data.to_dict()
 
     def delete_token(self, token: str) -> None:
         self.storage.delete_token(token)
 
 
-def token_validator(token_manager: TokenManager, token_type: str = "default"):
+def default_extract_token_func(*args, **kwargs) -> str:
+    return kwargs.get("token", None)
+
+# 通用token验证 装饰器
+def token_validator(
+    token_manager: TokenManager,
+    token_type: str = "default",
+    extract_token_func: Callable = default_extract_token_func,
+):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            token = kwargs.get("token", None)
+            token = extract_token_func(*args, **kwargs)
             if not token:
                 raise ValueError("No token provided")
 
             token_data = token_manager.validate_token(token, token_type)
-            token_manager.set_token_data(token_data) # 设置token数据
             if not token_data:
                 raise ValueError("Invalid or expired token")
             return f(*args, **kwargs)
@@ -179,3 +192,18 @@ def token_validator(token_manager: TokenManager, token_type: str = "default"):
         return decorated_function
 
     return decorator
+
+def flask_extract_token_func(*args, **kwargs):
+    # Flask环境
+    try:
+        from flask import request
+        token = request.headers.get("Authorization")
+        if token and token.startswith("Bearer "):
+            token = token.split(" ")[1]
+        return token
+    except ImportError:
+        raise ValueError("Flask is not installed")
+
+# flask环境 装饰器  
+def flask_token_validator(token_manager: TokenManager, token_type: str = "default"):
+    return token_validator(token_manager, token_type, flask_extract_token_func)

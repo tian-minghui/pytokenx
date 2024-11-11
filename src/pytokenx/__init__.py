@@ -1,4 +1,4 @@
-from .base import TokenManager, TokenData, TokenStorage, token_validator
+from .base import TokenManager, TokenData, TokenStorage, token_validator, flask_token_validator
 
 from .file_storage import FileTokenStorage
 
@@ -12,4 +12,5 @@ __all__ = [
     "FileTokenStorage",
     "SQLAlchemyTokenStorage",
     "token_validator",
+    "flask_token_validator",
 ]

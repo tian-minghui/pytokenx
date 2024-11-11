@@ -20,8 +20,13 @@ else:
 @token_validator(token_manager)
 def my_function(token):
     print(token)
-    print(token_manager.get_token_data())  # {'token': 'MieZqFUchiasygXW', 'token_type': 'default', 'user_id': 'test_user', 'extra_data': {'name': 'test_name'}, 'created_at': '2024-11-07T14:12:17.389325', 'expires_at': None, 'deleted_at': None, 'is_active': True}
+    print(token_manager.get_current_token_data())  # {'token': 'MieZqFUchiasygXW', 'token_type': 'default', 'user_id': 'test_user', 'extra_data': {'name': 'test_name'}, 'created_at': '2024-11-07T14:12:17.389325', 'expires_at': None, 'deleted_at': None, 'is_active': True}
 
 my_function(token=token)
 
 token_manager.delete_token(token) # 删除token
+
+token_manager.storage.close()
+
+if os.path.exists("tokens.json"):
+    os.remove("tokens.json")
