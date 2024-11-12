@@ -8,7 +8,14 @@ from datetime import datetime
 class FileTokenStorage(TokenStorage):
     def __init__(self, file_path: str):
         self.file_path = file_path
+        # 创建文件,可能要创建目录
+        dir_path = os.path.dirname(file_path)
+        if not os.path.exists(dir_path):
+            print("创建目录:", dir_path)
+            os.makedirs(dir_path)
+
         if not os.path.exists(file_path):
+            print("创建文件:", file_path)
             with open(file_path, 'w') as f:
                 json.dump({}, f)
 
