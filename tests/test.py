@@ -1,7 +1,7 @@
 import os
 import sys
 
-from pytokenx import TokenManager, FileTokenStorage, token_validator
+from pytokenx import TokenManager, FileTokenStorage, token_validator, flask_token_validator
 
 # 使用文件存储
 token_manager = TokenManager(FileTokenStorage("tokens.json"))

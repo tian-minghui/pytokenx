@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pytokenx"
-version = "1.0"
+version = "1.1"
 authors = [
   { name="timway", email="tianmh2013@163.com" },
 ]
@@ -18,4 +18,4 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/tian-minghui/pytoken"
+Homepage = "https://github.com/tian-minghui/pytokenx"

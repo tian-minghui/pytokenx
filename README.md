@@ -40,5 +40,24 @@ pip install pytokenx
 
     my_function(token=token)
 
+    # flask装饰器 使用示例
+    @app.route("/get_code", methods=["POST"])
+    @flask_token_validator(token_manager)
+    def get_code():
+        pass 
+
+    # 通用装饰器
+    # 1.定义获取token的方法
+    def extract_token_func(*args, **kwargs) -> str:
+        return args[0]
+
+    # 使用装饰器
+    @token_validator(token_manager, extract_token_func=extract_token_func)
+    def my_function_custom(token):
+        print(token)
+    
+    my_function_custom(token)
+
+
     token_manager.delete_token(token) # 删除token
 

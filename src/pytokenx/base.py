@@ -171,6 +171,9 @@ class TokenManager:
 def default_extract_token_func(*args, **kwargs) -> str:
     return kwargs.get("token", None)
 
+class TokenInvalidError(Exception):
+    pass
+
 # 通用token验证 装饰器
 def token_validator(
     token_manager: TokenManager,
@@ -182,11 +185,11 @@ def token_validator(
         def decorated_function(*args, **kwargs):
             token = extract_token_func(*args, **kwargs)
             if not token:
-                raise ValueError("No token provided")
+                raise TokenInvalidError("No token provided")
 
             token_data = token_manager.validate_token(token, token_type)
             if not token_data:
-                raise ValueError("Invalid or expired token")
+                raise TokenInvalidError("Invalid or expired token")
             return f(*args, **kwargs)
 
         return decorated_function
@@ -206,4 +209,7 @@ def flask_extract_token_func(*args, **kwargs):
 
 # flask环境 装饰器  
 def flask_token_validator(token_manager: TokenManager, token_type: str = "default"):
-    return token_validator(token_manager, token_type, flask_extract_token_func)
+    try:
+        return token_validator(token_manager, token_type, flask_extract_token_func)
+    except TokenInvalidError as e:
+        return {"error": str(e)}, 401
