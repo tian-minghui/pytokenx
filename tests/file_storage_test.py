@@ -21,11 +21,8 @@ class TestFileTokenStorage:
         token_data = TokenData(
             token="test_token",
             token_type="test",
-            user_id="test_user",
-            extra_data={"key": "value"},
             created_at=datetime.utcnow(),
             expires_at=datetime.utcnow() + timedelta(hours=1),
-            is_active=True,
         )
 
         self.storage.save_token(token_data)
@@ -34,16 +31,11 @@ class TestFileTokenStorage:
         assert retrieved_data is not None
         assert retrieved_data.token == token_data.token
         assert retrieved_data.token_type == token_data.token_type
-        assert retrieved_data.user_id == token_data.user_id
-        assert retrieved_data.extra_data == token_data.extra_data
-        assert retrieved_data.is_active == token_data.is_active
 
     def test_delete_token(self):
         token_data = TokenData(
             token="test_delete_token",
             token_type="test",
-            user_id="test_user",
-            extra_data={},
             created_at=datetime.utcnow(),
         )
 
@@ -51,20 +43,16 @@ class TestFileTokenStorage:
         self.storage.delete_token("test_delete_token")
 
         assert self.storage.get_token("test_delete_token").deleted_at is not None
-
-    def test_expire_token(self):
+    
+    def test_add_quota(self):
         token_data = TokenData(
-            token="test_expire_token",
+            token="test_add_quota",
             token_type="test",
-            user_id="test_user",
-            extra_data={},
             created_at=datetime.utcnow(),
-            is_active=True,
+            quota=10
         )
 
         self.storage.save_token(token_data)
-        self.storage.expire_token("test_expire_token")
+        self.storage.add_quota("test_add_quota", 10)
 
-        retrieved_data = self.storage.get_token("test_expire_token")
-        assert retrieved_data is not None
-        assert retrieved_data.is_active is False
+        assert self.storage.get_token("test_add_quota").r_quota == 20
