@@ -3,11 +3,18 @@ from .base import TokenData, TokenStorage
 import json
 import os
 from datetime import datetime
+from threading import RLock
 
 
 class FileTokenStorage(TokenStorage):
+    """
+    直接使用json文件存储
+    """
     def __init__(self, file_path: str):
         self.file_path = file_path
+        # 判断是否包含路径
+        if not os.path.isabs(file_path):
+            file_path = os.path.abspath(file_path)
         # 创建文件,可能要创建目录
         dir_path = os.path.dirname(file_path)
         if not os.path.exists(dir_path):
@@ -18,7 +25,6 @@ class FileTokenStorage(TokenStorage):
             print("创建文件:", file_path)
             with open(file_path, 'w') as f:
                 json.dump({}, f)
-
         self._read_tokens()
     
     def _read_tokens(self) -> Dict:
@@ -43,10 +49,11 @@ class FileTokenStorage(TokenStorage):
             self.tokens[token].deleted_at = datetime.utcnow()
             self.tokens[token].is_active = False
             self._write_tokens(self.tokens)
-
-
-    def expire_token(self, token: str) -> None:
+    
+    def update_token(self, token_data):
+        return self.save_token(token_data)
+    
+    def add_quota(self, token, quota_delta):
         if token in self.tokens:
-            self.tokens[token].expires_at = datetime.utcnow()
-            self.tokens[token].is_active = False
+            self.tokens[token].r_quota += quota_delta
             self._write_tokens(self.tokens)

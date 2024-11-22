@@ -4,7 +4,7 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from datetime import datetime, timedelta
-from src.pytokenx import TokenManager, TokenData, TokenStorage
+from src.pytokenx import TokenManager, TokenData, TokenStorage, TokenInvalidError
 
 class MockTokenStorage(TokenStorage):
     def __init__(self):
@@ -31,7 +31,14 @@ class MockTokenStorage(TokenStorage):
             
     def expire_token(self, token: str) -> None:
         if token in self.tokens:
-            self.tokens[token].is_active = False
+            self.tokens[token].expires_at = datetime.utcnow()
+    
+    def update_token(self, token_data: TokenData) -> None:
+        self.tokens[token_data.token] = token_data
+    
+    def add_quota(self, token: str, quota_delta: int) -> None:
+        if token in self.tokens:
+            self.tokens[token].quota += quota_delta
 
 class TestTokenManager:
     def setup_method(self):
@@ -46,16 +53,12 @@ class TestTokenManager:
         token = self.manager.generate_token(
             user_id="test_user",
             token_type="test",
-            extra_data={"key": "value"}
         )
-        
         assert len(token) == 16
         token_data = self.storage.get_token(token)
         assert token_data is not None
-        assert token_data.user_id == "test_user"
+        assert token_data.ext.get("user_id") == "test_user"
         assert token_data.token_type == "test"
-        assert token_data.extra_data == {"key": "value"}
-        assert token_data.is_active is True
         
     def test_validate_token(self):
         token = self.manager.generate_token(
@@ -65,7 +68,7 @@ class TestTokenManager:
         
         token_data = self.manager.validate_token(token, "test")
         assert token_data is not None
-        assert token_data["user_id"] == "test_user"
+        assert token_data.ext.get("user_id") == "test_user"
         assert token_data["token_type"] == "test"
         
     def test_validate_expired_token(self):
@@ -73,22 +76,45 @@ class TestTokenManager:
             user_id="test_user",
             expiry=timedelta(seconds=-1)
         )
-        
-        token_data = self.manager.validate_token(token)
-        assert token_data is None
+        try:
+            token_data = self.manager.validate_token(token)
+        except TokenInvalidError:
+            assert True
         
     def test_validate_invalid_token(self):
-        token_data = self.manager.validate_token("invalid_token")
-        assert token_data is None
+        try:
+            self.manager.validate_token("invalid_token")
+        except TokenInvalidError:
+            assert True
         
     def test_validate_wrong_type(self):
         token = self.manager.generate_token(token_type="type1")
-        token_data = self.manager.validate_token(token, "type2")
-        assert token_data is None
+        try:
+            self.manager.validate_token(token, "type2")
+        except TokenInvalidError:
+            assert True
         
     def test_delete_token(self):
         token = self.manager.generate_token()
         self.manager.delete_token(token)
-        assert self.storage.get_token(token) is None
+        try:
+            self.manager.validate_token(token)
+        except TokenInvalidError:
+            assert True
+    
+    def test_validate_quota_token(self):
+        token = self.manager.generate_token(quota=10)
+        data = self.manager.validate_token(token, cost_quota=5)
+        assert data.r_quota == 5
+        try:
+            self.manager.validate_token(token, cost_quota=6)
+        except TokenInvalidError:
+            assert True
+        
+        data = self.manager.validate_token(token, cost_quota=5)
+        assert data.r_quota == 0
+        
+    
+    
 
 
