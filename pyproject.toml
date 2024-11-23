@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pytokenx"
-version = "1.5"
+version = "1.6"
 authors = [
   { name="timway", email="tianmh2013@163.com" },
 ]

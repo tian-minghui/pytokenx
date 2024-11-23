@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Callable, Optional, Dict
 from functools import wraps
 import threading
+import copy
 
 QUOTA_UNLIMITED : int = float("-inf")
 
@@ -197,6 +198,7 @@ class TokenManager:
         """
         # Get token data
         token_data = self.storage.get_token(token)
+        token_data = copy.deepcopy(token_data)
         if not token_data or token_data.token_type != token_type:
             raise TokenInvalidError("Invalid token")
 
@@ -212,16 +214,22 @@ class TokenManager:
                 raise TokenInvalidError("Token quota exceeded")
             if deduct_quota:
                 token_data.r_quota = r_quota
-                self.add_quota(token, -cost_quota)
+                self.deduct_quota(token, -cost_quota)
 
         self.set_current_token_data(token_data)
         return token_data
+    
+    def get_token_data(self, token: str) -> Optional[TokenData]:
+        """
+        获取token数据
+        """
+        return self.storage.get_token(token)
 
-    def add_quota(self, token: str, quota_delta: int = -1):
+    def deduct_quota(self, token: str, quota_delta: int = 1):
         """
         操作token额度， 可以用于校验之后手动扣减，或者一些场景（执行失败）手动增加
         """
-        self.storage.add_quota(token, quota_delta)
+        self.storage.add_quota(token, -quota_delta)
 
     def update_token(self, token_data: TokenData) -> None:
         """

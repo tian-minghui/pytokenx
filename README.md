@@ -5,7 +5,8 @@ pytokenx 是一个简单易用的 Python Token 管理器。它提供了生成、
 ## 特性
 
 - 生成安全的随机 token, 长度可配置
-- 支持 token 过期时间设置
+- token支持过期时间
+- 支持quota
 - 同时支持多种token类型
 - token数据的持久化，目前支持文件、以及SQLAlchemy，也可以用户自定义
 - 支持装饰器
@@ -17,34 +18,49 @@ pytokenx 是一个简单易用的 Python Token 管理器。它提供了生成、
 pip install pytokenx
 ```
 ## 使用
-    from pytokenx import TokenManager, FileTokenStorage, SQLAlchemyTokenStorage
-    
+    from pytokenx import TokenManager, FileTokenStorage, token_validator, flask_token_validator, TokenStorage
+
     # 使用文件存储
     token_manager = TokenManager(FileTokenStorage("tokens.json"))
     # sqlite存储
     # token_manager = TokenManager(SQLAlchemyTokenStorage(connection_string="sqlite:///test.db"))
-    token = token_manager.generate_token(user_id="test_user", extra_data = {"name": "test_name"}) # 生成token
-    print(token)  # MieZqFUchiasygXW
-    token_data = token_manager.validate_token(token) # 验证token
-    if token_data:
-        print(token_data)  # {'token': 'MieZqFUchiasygXW', 'token_type': 'default', 'user_id': 'test_user', 'extra_data': {'name': 'test_name'}, 'created_at': '2024-11-07T14:12:17.389325', 'expires_at': None, 'deleted_at': None, 'is_active': True}
-    else:
-        print("token 无效")
+    # 自定义存储
+    # class CustomTokenStorage(TokenStorage):
+    #     xxxx
 
+    # 生成token
+    token1 = token_manager.generate_token(user_id="test_user", expiry= timedelta(days=1)) 
+    print("generate token1 with expiry ",token1)  # MieZqFUchiasygXW
+    # 验证token
+    token_data = token_manager.validate_token(token1) 
+    print("validate token1  pass", token_data)
 
+    # 生成带quota的token
+    token2 = token_manager.generate_token(expiry= timedelta(days=1), quota=10)
+    print("generate token2 with quota",token2)
+    # 验证带quota的token, 仅验证，不扣除
+    token_data = token_manager.validate_token(token2, cost_quota=2 , deduct_quota=False)
+    print("validate token2  pass", token_data)
+    # 扣除quota
+    token_manager.deduct_quota(token2, 2)
+    # 获取token数据
+    token_data = token_manager.get_token_data(token2)
+    print("get token2 data",token_data)
     # 使用装饰器
     @token_validator(token_manager)
     def my_function(token):
         print(token)
-        print(token_manager.get_token_data())  # {'token': 'MieZqFUchiasygXW', 'token_type': 'default', 'user_id': 'test_user', 'extra_data': {'name': 'test_name'}, 'created_at': '2024-11-07T14:12:17.389325', 'expires_at': None, 'deleted_at': None, 'is_active': True}
+        print(token_manager.get_current_token_data())   # 从当前线程中获取当前token数据 
 
-    my_function(token=token)
 
-    # flask装饰器 使用示例
-    @app.route("/get_code", methods=["POST"])
-    @flask_token_validator(token_manager)
-    def get_code():
-        pass 
+    my_function(token=token2)
+
+
+    # # flask装饰器
+    # @app.route("/get_code", methods=["POST"])
+    # @flask_token_validator(token_manager)
+    # def get_code():
+    #     pass 
 
     # 通用装饰器
     # 1.定义获取token的方法
@@ -55,9 +71,10 @@ pip install pytokenx
     @token_validator(token_manager, extract_token_func=extract_token_func)
     def my_function_custom(token):
         print(token)
-    
-    my_function_custom(token)
+
+    my_function_custom(token2)
 
 
-    token_manager.delete_token(token) # 删除token
+    # 删除token
+    token_manager.delete_token(token2) 
 
