@@ -292,7 +292,23 @@ def flask_token_validator(token_manager: TokenManager,
                           cost_quota: int = 1,
                           deduct_quota: bool = True
                           ):
-    try:
-        return token_validator(token_manager, token_type, cost_quota, deduct_quota, flask_extract_token_func)
-    except TokenInvalidError as e:
-        return {"error": str(e)}, 401
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            try:
+                # 使用原有的token_validator逻辑
+                decorated_func = token_validator(
+                    token_manager=token_manager,
+                    token_type=token_type,
+                    cost_quota=cost_quota,
+                    deduct_quota=deduct_quota,
+                    extract_token_func=flask_extract_token_func
+                )(f)
+                # 执行装饰后的函数
+                return decorated_func(*args, **kwargs)
+            except TokenInvalidError as e:
+                # 在这里处理TokenInvalidError异常
+                return {"error": str(e)}, 401 
+        return wrapper
+
+    return decorator
